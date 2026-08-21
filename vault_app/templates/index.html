@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+
+{% block title %}Wallets | BNB Wallet Vault{% endblock %}
+
+{% block content %}
+  <section class="hero">
+    <div>
+      <p class="eyebrow">Local Admin Tool</p>
+      <h1>Store BNB wallet details without storing plaintext private keys.</h1>
+      <p class="hero-copy">
+        Each private key is encrypted with your passphrase plus an app-level pepper before it reaches the database.
+      </p>
+    </div>
+    <div class="hero-card">
+      <span class="metric-label">Stored wallets</span>
+      <strong class="metric-value">{{ wallets|length }}</strong>
+      <span class="metric-copy">MySQL-backed records ready for decrypt-on-demand access.</span>
+    </div>
+  </section>
+
+  <section class="grid">
+    <article class="panel">
+      <div class="panel-heading">
+        <h2>Add Wallet</h2>
+        <p>Generate a BEP20 wallet in the app or paste an existing one, then choose the passphrase used for encryption and later decryption.</p>
+      </div>
+
+      <form method="post" action="{{ url_for('main.create_wallet') }}" class="form-stack">
+        <input
+          type="hidden"
+          name="private_key_mode"
+          value="{{ form_data.get('private_key_mode', 'manual') }}"
+        />
+        {% if form_data.get('private_key_mode') == 'generated' and form_data.get('private_key_token') %}
+          <input
+            type="hidden"
+            name="private_key_token"
+            value="{{ form_data.get('private_key_token', '') }}"
+          />
+        {% endif %}
+
+        <div class="callout">
+          <div>
+            <strong>BEP20 uses BNB Smart Chain `0x...` addresses.</strong>
+            <p>Use the generator below to create a fresh wallet pair, then save it in encrypted form.</p>
+          </div>
+          <button
+            type="submit"
+            class="button button-secondary"
+            formaction="{{ url_for('main.generate_wallet') }}"
+            formnovalidate
+          >
+            Generate BEP20 Wallet
+          </button>
+        </div>
+
+        <label>
+          <span>Label</span>
+          <input
+            type="text"
+            name="label"
+            maxlength="120"
+            value="{{ form_data.get('label', '') }}"
+            placeholder="Treasury Wallet"
+            required
+          />
+        </label>
+
+        <label>
+          <span>Wallet Address</span>
+          <input
+            type="text"
+            name="wallet_address"
+            value="{{ form_data.get('wallet_address', '') }}"
+            placeholder="0x... for BEP20 / BSC"
+            spellcheck="false"
+            required
+          />
+        </label>
+
+        <label>
+          <span>Private Key</span>
+          {% if form_data.get('private_key_mode') == 'generated' and form_data.get('private_key_token') %}
+            <div class="secret-box">
+              <div class="secret-value mono">{{ form_data.get('private_key_mask', '*****') }}</div>
+              <div class="secret-actions">
+                <button
+                  type="button"
+                  class="button button-secondary"
+                  data-default-label="Copy"
+                  data-copy-url="{{ url_for('main.copy_secret', token=form_data.get('private_key_token')) }}"
+                  onclick="copyServerSecret(this)"
+                >
+                  Copy
+                </button>
+              </div>
+            </div>
+          {% else %}
+            <textarea
+              name="private_key"
+              rows="4"
+              placeholder="Generated or pasted 64-character hex private key"
+              spellcheck="false"
+              required
+            >{{ form_data.get('private_key', '') }}</textarea>
+          {% endif %}
+        </label>
+
+        <div class="two-col">
+          <label>
+            <span>Passphrase</span>
+            <input type="password" name="passphrase" autocomplete="new-password" required />
+          </label>
+
+          <label>
+            <span>Confirm Passphrase</span>
+            <input type="password" name="confirm_passphrase" autocomplete="new-password" required />
+          </label>
+        </div>
+
+        <label>
+          <span>Notes</span>
+          <textarea
+            name="notes"
+            rows="3"
+            placeholder="Optional wallet context"
+          >{{ form_data.get('notes', '') }}</textarea>
+        </label>
+
+        <button type="submit" class="button button-primary">Encrypt And Save</button>
+      </form>
+    </article>
+
+    <article class="panel">
+      <div class="panel-heading">
+        <h2>Stored Wallets</h2>
+        <p>Addresses are visible here, but private keys stay encrypted unless you decrypt with the passphrase.</p>
+      </div>
+
+      {% if wallets %}
+        <div class="wallet-list">
+          {% for wallet in wallets %}
+            <div class="wallet-card">
+              <div class="wallet-card-top">
+                <div>
+                  <h3>{{ wallet.label }}</h3>
+                  <p class="mono">{{ wallet.wallet_address }}</p>
+                </div>
+                <span class="timestamp">{{ wallet.created_at.strftime("%Y-%m-%d %H:%M UTC") }}</span>
+              </div>
+
+              {% if wallet.notes %}
+                <p class="wallet-notes">{{ wallet.notes }}</p>
+              {% endif %}
+
+              <div class="wallet-actions">
+                <a class="button button-secondary" href="{{ url_for('main.decrypt_wallet_view', wallet_id=wallet.id) }}">
+                  Decrypt
+                </a>
+                <form method="post" action="{{ url_for('main.delete_wallet', wallet_id=wallet.id) }}">
+                  <button
+                    type="submit"
+                    class="button button-danger"
+                    onclick="return confirm('Delete this wallet record?');"
+                  >
+                    Delete
+                  </button>
+                </form>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="empty-state">
+          <h3>No wallets stored yet.</h3>
+          <p>Add your first BNB wallet on the left to start using the vault.</p>
+        </div>
+      {% endif %}
+    </article>
+  </section>
+{% endblock %}

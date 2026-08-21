@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+
+{% block title %}Send BNB / USDT | BNB Wallet Vault{% endblock %}
+
+{% block content %}
+  <section class="hero">
+    <div>
+      <p class="eyebrow">BNB / USDT Transfer</p>
+      <h1>Send BNB or USDT from a stored BSC wallet to another `0x...` address.</h1>
+      <p class="hero-copy">
+        Choose the asset first. BNB uses a native chain transfer, while USDT uses a BEP20 contract transfer signed with the selected wallet after you enter its passphrase.
+      </p>
+    </div>
+    <div class="hero-card">
+      <span class="metric-label">Active Chain</span>
+      <strong class="metric-value">{{ chain_id }}</strong>
+      <span class="metric-copy">
+        {% if rpc_configured %}
+          RPC is ready. You can edit the node directly in the form below.
+        {% else %}
+          Paste an RPC URL below or set `BSC_RPC_URL` in `.env`.
+        {% endif %}
+      </span>
+    </div>
+  </section>
+
+  <section class="grid">
+    <article class="panel">
+      <div class="panel-heading">
+        <h2>Send Asset</h2>
+        <p>Choose a stored BSC wallet, then enter the asset, destination address, amount, and passphrase.</p>
+      </div>
+
+      <div class="callout">
+        <div>
+          <strong>BNB and USDT</strong>
+          <p>The RPC URL entered here is used only for this request. For USDT, verify the token contract and decimals before sending.</p>
+        </div>
+      </div>
+
+      {% if not wallets %}
+        <div class="empty-state compact-empty">
+          <h3>No BSC source wallets yet.</h3>
+          <p>Add at least one stored `0x...` wallet in the vault tab before sending BNB.</p>
+        </div>
+      {% else %}
+        <form method="post" action="{{ url_for('main.send_wallet') }}" class="form-stack">
+          <label>
+            <span>Asset</span>
+            <select name="asset_symbol" required>
+              <option value="BNB" {% if form_data.get('asset_symbol', 'BNB') == 'BNB' %}selected{% endif %}>
+                BNB
+              </option>
+              <option value="USDT" {% if form_data.get('asset_symbol') == 'USDT' %}selected{% endif %}>
+                USDT
+              </option>
+            </select>
+          </label>
+
+          <label>
+            <span>RPC Node URL</span>
+            <input
+              type="url"
+              name="rpc_url"
+              value="{{ form_data.get('rpc_url', '') }}"
+              placeholder="https://bsc-dataseed.binance.org/"
+              spellcheck="false"
+            />
+          </label>
+
+          <label>
+            <span>USDT Contract Address</span>
+            <input
+              type="text"
+              name="token_contract"
+              value="{{ form_data.get('token_contract', '') }}"
+              placeholder="0x... used only when Asset = USDT"
+              spellcheck="false"
+            />
+          </label>
+
+          <label>
+            <span>USDT Decimals</span>
+            <input
+              type="number"
+              name="token_decimals"
+              value="{{ form_data.get('token_decimals', '18') }}"
+              placeholder="18"
+              inputmode="numeric"
+              min="0"
+              max="36"
+            />
+          </label>
+
+          <label>
+            <span>From Wallet</span>
+            <select name="wallet_id" required>
+              <option value="">Choose a stored wallet</option>
+              {% for wallet in wallets %}
+                <option
+                  value="{{ wallet.id }}"
+                  {% if form_data.get('wallet_id') == wallet.id|string %}selected{% endif %}
+                >
+                  {{ wallet.label }} | {{ wallet.wallet_address }}
+                </option>
+              {% endfor %}
+            </select>
+          </label>
+
+          <label>
+            <span>To Address</span>
+            <input
+              type="text"
+              name="to_wallet_address"
+              value="{{ form_data.get('to_wallet_address', '') }}"
+              placeholder="0x..."
+              spellcheck="false"
+              required
+            />
+          </label>
+
+          <label>
+            <span>Amount</span>
+            <input
+              type="text"
+              name="amount_value"
+              value="{{ form_data.get('amount_value', '') }}"
+              placeholder="0.05"
+              inputmode="decimal"
+              required
+            />
+          </label>
+
+          <label>
+            <span>Passphrase</span>
+            <input
+              type="password"
+              name="passphrase"
+              autocomplete="current-password"
+              required
+            />
+          </label>
+
+          <button
+            type="submit"
+            class="button button-primary"
+            onclick="return confirm('This will broadcast an irreversible asset transfer on BNB Smart Chain. Continue?');"
+          >
+            Send Asset
+          </button>
+        </form>
+      {% endif %}
+    </article>
+
+    <article class="panel">
+      <div class="panel-heading">
+        <h2>Recent Transfers</h2>
+        <p>The last broadcast transactions are recorded here after the RPC accepts them.</p>
+      </div>
+
+      {% if transfers %}
+        <div class="wallet-list">
+          {% for transfer in transfers %}
+            <div class="wallet-card">
+              <div class="wallet-card-top">
+                <div>
+                  <h3>{{ transfer.wallet_label }}</h3>
+                  <p class="mono">{{ transfer.from_wallet_address }}</p>
+                </div>
+                <span class="timestamp">{{ transfer.created_at.strftime("%Y-%m-%d %H:%M UTC") }}</span>
+              </div>
+
+              <p class="wallet-notes">
+                Sent <strong>{{ transfer.amount_bnb }}</strong> {{ transfer.asset_symbol or 'BNB' }} to
+                <span class="mono">{{ transfer.to_wallet_address }}</span>
+              </p>
+              {% if transfer.token_contract %}
+                <p class="wallet-notes">
+                  Token contract:
+                  <span class="mono">{{ transfer.token_contract }}</span>
+                  {% if transfer.token_decimals is not none %}
+                    | Decimals {{ transfer.token_decimals }}
+                  {% endif %}
+                </p>
+              {% endif %}
+              <p class="wallet-notes">
+                Tx hash:
+                <span class="mono">{{ transfer.tx_hash }}</span>
+              </p>
+              <p class="wallet-notes">
+                Chain {{ transfer.chain_id }} | Gas {{ transfer.gas_limit }} @ {{ transfer.gas_price_wei }} wei
+              </p>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="empty-state">
+          <h3>No transfers yet.</h3>
+          <p>Your broadcast history will appear here after the first BNB send.</p>
+        </div>
+      {% endif %}
+    </article>
+  </section>
+{% endblock %}

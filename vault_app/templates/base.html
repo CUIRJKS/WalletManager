@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{% block title %}BNB Wallet Vault{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='styles.css') }}"
+    />
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="topbar">
+        <div>
+          <a class="brand" href="{{ url_for('main.home') }}">BNB Wallet Vault</a>
+          <p class="brand-copy">Encrypted private key storage with on-demand decryption and BSC send support.</p>
+        </div>
+        <nav class="nav-tabs" aria-label="Main navigation">
+          <a
+            class="nav-tab {% if active_tab == 'vault' %}is-active{% endif %}"
+            href="{{ url_for('main.home') }}"
+          >
+            Vault
+          </a>
+          <a
+            class="nav-tab {% if active_tab == 'send' %}is-active{% endif %}"
+            href="{{ url_for('main.send_view') }}"
+          >
+            Send BNB
+          </a>
+        </nav>
+      </header>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <section class="flash-stack">
+            {% for category, message in messages %}
+              <div class="flash flash-{{ category }}">{{ message }}</div>
+            {% endfor %}
+          </section>
+        {% endif %}
+      {% endwith %}
+
+      <main>
+        {% block content %}{% endblock %}
+      </main>
+    </div>
+
+    <script>
+      async function copyServerSecret(button) {
+        const copyUrl = button.dataset.copyUrl;
+        const originalLabel = button.dataset.defaultLabel || button.textContent.trim();
+
+        try {
+          const response = await fetch(copyUrl, {
+            method: "POST",
+            headers: { "X-Requested-With": "fetch" }
+          });
+          const payload = await response.json();
+
+          if (!response.ok) {
+            throw new Error(payload.error || "Copy failed");
+          }
+
+          await navigator.clipboard.writeText(payload.secret);
+          button.textContent = "Copied";
+
+          window.setTimeout(() => {
+            button.textContent = originalLabel;
+          }, 1600);
+        } catch (error) {
+          button.textContent = "Copy Failed";
+
+          window.setTimeout(() => {
+            button.textContent = originalLabel;
+          }, 1800);
+        }
+      }
+    </script>
+  </body>
+</html>

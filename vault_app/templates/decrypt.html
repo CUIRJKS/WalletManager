@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block title %}Decrypt Wallet | BNB Wallet Vault{% endblock %}
+
+{% block content %}
+  <section class="decrypt-layout">
+    <article class="panel">
+      <div class="panel-heading">
+        <p class="eyebrow">Decrypt Wallet</p>
+        <h1>{{ wallet.label }}</h1>
+        <p class="mono">{{ wallet.wallet_address }}</p>
+      </div>
+
+      <form method="post" class="form-stack">
+        <label>
+          <span>Passphrase</span>
+          <input type="password" name="passphrase" autocomplete="current-password" required />
+        </label>
+        <button type="submit" class="button button-primary">Decrypt Private Key</button>
+      </form>
+    </article>
+
+    <article class="panel">
+      <div class="panel-heading">
+        <h2>Decrypted Output</h2>
+        <p>The private key is decrypted only after a successful passphrase check.</p>
+      </div>
+
+      {% if decrypted_private_key_mask and decrypted_private_key_token %}
+        <label class="result-block">
+          <span>Private Key</span>
+          <div class="secret-box">
+            <div class="secret-value mono">{{ decrypted_private_key_mask }}</div>
+          </div>
+        </label>
+        <div class="wallet-actions">
+          <button
+            type="button"
+            class="button button-secondary"
+            data-default-label="Copy"
+            data-copy-url="{{ url_for('main.copy_secret', token=decrypted_private_key_token) }}"
+            onclick="copyServerSecret(this)"
+          >
+            Copy
+          </button>
+          <a class="button button-primary" href="{{ url_for('main.home') }}">Back To Vault</a>
+        </div>
+      {% else %}
+        <div class="empty-state">
+          <h3>Nothing decrypted yet.</h3>
+          <p>Enter the same passphrase used during encryption to reveal the private key.</p>
+        </div>
+      {% endif %}
+    </article>
+  </section>
+{% endblock %}
